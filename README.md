@@ -34,7 +34,7 @@ git clone https://github.com/czh-98/STAR.git
 cd STAR 
 
 # create env
-conda create -n star python=3.9.18
+conda create -n star python=3.10
 
 conda activate star 
 
@@ -143,8 +143,21 @@ python -m apps.demo --config configs/test.yaml --text "Tyrion Lannister in Game 
 
 ### Export Fbx
 
-- TBD
+- To export the 4D avatars, you need first install the FBX SDK as follows:
+```bash
+wget -P ./externals/fbx-python-sdk https://damassets.autodesk.net/content/dam/autodesk/www/files/fbx202037_fbxpythonsdk_linux.tar.gz
+tar -xvzf ./externals/fbx-python-sdk/fbx202037_fbxpythonsdk_linux.tar.gz -C ./externals/fbx-python-sdk
 
+# Follow the Install_FBX_Python_SDK.txt
+# Install FBX Python SDK
+chmod ugo+x ./externals/fbx-python-sdk/fbx202037_fbxpythonsdk_linux
+./externals/fbx-python-sdk/fbx202037_fbxpythonsdk_linux ./externals/fbx-python-sdk
+pip install ./externals/fbx-python-sdk/fbx-2020.3.7-cp310-cp310-manylinux1_x86_64.whl
+```
+- Then, you can save the `fbx` files according to:
+```python
+python -m apps.export_fbx --config configs/test.yaml --text "Tyrion Lannister in Game of Thrones wearing black leather jacket, he/she is performing extreme acrobat while raising hands and kicking quickly" --description demo --t2m_model mdiffuse
+```
 
 # Citation
 If you find our work is helpful in your research, please cite:
@@ -164,7 +177,7 @@ If you find our work is helpful in your research, please cite:
 
 # Acknowledgement
 
-This repository is heavily based on [TADA](https://github.com/TingtingLiao/TADA), [DreamWaltz](https://github.com/IDEA-Research/DreamWaltz), [ConditionVideo](https://github.com/pengbo807/ConditionVideo), [R2ET](https://github.com/Kebii/R2ET), [MotionDiffuse](https://github.com/mingyuan-zhang/MotionDiffuse.git), [MMHuman3D](https://github.com/open-mmlab/mmhuman3d). We would like to thank the authors of these work for publicly releasing their code.
+This repository is heavily based on [TADA](https://github.com/TingtingLiao/TADA), [DreamWaltz](https://github.com/IDEA-Research/DreamWaltz), [ConditionVideo](https://github.com/pengbo807/ConditionVideo), [R2ET](https://github.com/Kebii/R2ET), [MotionDiffuse](https://github.com/mingyuan-zhang/MotionDiffuse.git), [MMHuman3D](https://github.com/open-mmlab/mmhuman3d), [Smplx2FBX](https://github.com/mrhaiyiwang/Smplx2FBX). We would like to thank the authors of these work for publicly releasing their code.
 
 
 

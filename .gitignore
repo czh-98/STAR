@@ -28,6 +28,7 @@ git-add-commit.sh
 *.npz
 # *.npy
 *.pickle
+*tar.gz
 
 # Visualization
 *.mp4
@@ -43,6 +44,7 @@ git-add-commit.sh
 # custom
 data/*
 exp/
+*/fbx-python-sdk/
 .vscode
 .idea
 *.pkl
