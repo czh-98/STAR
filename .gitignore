@@ -42,7 +42,8 @@ git-add-commit.sh
 # *.pt
 
 # custom
-data/*
+# data/*
+!data/FLAME_masks/FLAME.obj
 exp/
 */fbx-python-sdk/
 .vscode

@@ -117,7 +117,9 @@ def draw_bodypose(canvas, keypoints_2d):
             mY = np.mean(Y)
             length = ((X[0] - X[1]) ** 2 + (Y[0] - Y[1]) ** 2) ** 0.5
             angle = math.degrees(math.atan2(X[0] - X[1], Y[0] - Y[1]))
-            polygon = cv2.ellipse2Poly((int(mY), int(mX)), (int(length / 2), stickwidth), int(angle), 0, 360, 1)
+            polygon = cv2.ellipse2Poly(
+                (int(mY), int(mX)), (int(length / 2), stickwidth), int(angle), 0, 360, 1
+            )
             cv2.fillConvexPoly(cur_canvas, polygon, colors[i])
             canvas = cv2.addWeighted(canvas, 0.4, cur_canvas, 0.6, 0)
     return canvas
@@ -261,11 +263,15 @@ class DLMesh(nn.Module):
         self.body_pose[[0, 1, 3, 4, 6, 7], :2] *= 0
         self.body_pose = self.body_pose.view(1, -1)
 
-        self.global_orient = torch.as_tensor(smplx_params["global_orient"]).to(self.device)
+        self.global_orient = torch.as_tensor(smplx_params["global_orient"]).to(
+            self.device
+        )
         self.expression = torch.zeros(1, 100).to(self.device)
 
         self.remesh_mask = self.get_remesh_mask()
-        self.faces_list, self.dense_lbs_weights, self.uniques, self.vt, self.ft = self.get_init_body()
+        self.faces_list, self.dense_lbs_weights, self.uniques, self.vt, self.ft = (
+            self.get_init_body()
+        )
 
         N = self.dense_lbs_weights.shape[0]
 
@@ -284,7 +290,9 @@ class DLMesh(nn.Module):
 
         # expression
         rich_data = np.load("./data/talkshow/rich.npy")
-        self.rich_params = torch.as_tensor(rich_data, dtype=torch.float32, device=self.device)  # 1800 265
+        self.rich_params = torch.as_tensor(
+            rich_data, dtype=torch.float32, device=self.device
+        )  # 1800 265
 
         if not self.opt.lock_expression:
             self.expression = nn.Parameter(self.expression)
@@ -314,7 +322,9 @@ class DLMesh(nn.Module):
         cache_path = "./data/init_body/data.npz"
         data = np.load(cache_path)
         faces_list = [torch.as_tensor(data["dense_faces"], device=self.device)]
-        dense_lbs_weights = torch.as_tensor(data["dense_lbs_weights"], device=self.device)
+        dense_lbs_weights = torch.as_tensor(
+            data["dense_lbs_weights"], device=self.device
+        )
         unique_list = [data["unique"]]
         vt = torch.as_tensor(data["vt"], device=self.device)
         ft = torch.as_tensor(data["ft"], device=self.device)
@@ -405,7 +415,9 @@ class DLMesh(nn.Module):
 
             else:
                 if is_full_body:
-                    random_pose = pose_seq[random.randint(0, pose_seq.shape[0] - 1)].unsqueeze(0)
+                    random_pose = pose_seq[
+                        random.randint(0, pose_seq.shape[0] - 1)
+                    ].unsqueeze(0)
 
                     output = self.body_model(
                         betas=self.betas,
@@ -428,7 +440,9 @@ class DLMesh(nn.Module):
         landmarks = output.joints[0, -68:, :]
 
         # re-mesh
-        v_cano_dense = subdivide_inorder(v_cano, self.smplx_faces[self.remesh_mask], self.uniques[0])
+        v_cano_dense = subdivide_inorder(
+            v_cano, self.smplx_faces[self.remesh_mask], self.uniques[0]
+        )
 
         for unique, faces in zip(self.uniques[1:], self.faces_list[:-1]):
             v_cano_dense = subdivide_inorder(v_cano_dense, faces, unique)
@@ -441,7 +455,9 @@ class DLMesh(nn.Module):
             else:
                 v_cano_dense += self.get_vertex_offset(is_train)
         # LBS
-        v_posed_dense = warp_points(v_cano_dense, self.dense_lbs_weights, output.joints_transform[:, :55]).squeeze(0)
+        v_posed_dense = warp_points(
+            v_cano_dense, self.dense_lbs_weights, output.joints_transform[:, :55]
+        ).squeeze(0)
 
         # if not is_train:
         if center is None:
@@ -497,7 +513,9 @@ class DLMesh(nn.Module):
         landmarks = output.joints[0, -68:, :]
 
         # re-mesh
-        v_cano_dense = subdivide_inorder(v_cano, self.smplx_faces[self.remesh_mask], self.uniques[0])
+        v_cano_dense = subdivide_inorder(
+            v_cano, self.smplx_faces[self.remesh_mask], self.uniques[0]
+        )
 
         for unique, faces in zip(self.uniques[1:], self.faces_list[:-1]):
             v_cano_dense = subdivide_inorder(v_cano_dense, faces, unique)
@@ -528,7 +546,9 @@ class DLMesh(nn.Module):
     @torch.no_grad()
     def export_mesh(self, save_dir):
 
-        mesh, landmarks, keypoints, v_posed, joints, v_cano_dense = self.get_mesh(is_train=False, return_skel=True)
+        mesh, landmarks, keypoints, v_posed, joints, v_cano_dense = self.get_mesh(
+            is_train=False, return_skel=True
+        )
 
         obj_path = os.path.join(save_dir, "mesh.obj")
         mesh.write(obj_path)
@@ -571,7 +591,9 @@ class DLMesh(nn.Module):
 
         pose_idx = np.arange(0, len(retarget_pose), 1)
 
-        _, _, _, _, center, scale = self.get_mesh(is_train=False, return_scale=True, center=None, scale=None)
+        _, _, _, _, center, scale = self.get_mesh(
+            is_train=False, return_scale=True, center=None, scale=None
+        )
 
         for idx in pose_idx:
             mesh, landmarks, keypoints, v_posed = self.get_mesh(
@@ -605,12 +627,16 @@ class DLMesh(nn.Module):
 
         if light_d is None:
             # gaussian noise around the ray origin, so the light always face the view dir (avoid dark face)
-            light_d = rays_o[0] + torch.randn(3, device=rays_o.device, dtype=torch.float)
+            light_d = rays_o[0] + torch.randn(
+                3, device=rays_o.device, dtype=torch.float
+            )
             light_d = safe_normalize(light_d)
 
         retarget_pose = self.retarget_pose
 
-        cano_mesh, _, cano_skeleton, _, center, scale = self.get_mesh(is_train=is_train, return_scale=True)
+        cano_mesh, _, cano_skeleton, _, center, scale = self.get_mesh(
+            is_train=is_train, return_scale=True
+        )
 
         pr_mesh, smplx_landmarks, smplx_skeleton, v_posed = self.get_mesh(
             is_train=is_train,
@@ -685,7 +711,13 @@ class DLMesh(nn.Module):
 
             closet_in_verts = torch.sum((pr_mesh.v - x) ** 2, dim=1)
 
-            idx = closet_in_verts.topk(topk, largest=False).indices.detach().cpu().numpy().tolist()
+            idx = (
+                closet_in_verts.topk(topk, largest=False)
+                .indices.detach()
+                .cpu()
+                .numpy()
+                .tolist()
+            )
 
             if not any([x in set(visible_verts_idx) for x in set(idx)]):
                 skeleton[:, cur_joint] = None
@@ -710,7 +742,11 @@ class DLMesh(nn.Module):
             normal_skeleton = normal
 
         skeleton_condition = (
-            torch.from_numpy(skeleton_condition).permute(2, 0, 1).unsqueeze(0).float().to(mvp.device)
+            torch.from_numpy(skeleton_condition)
+            .permute(2, 0, 1)
+            .unsqueeze(0)
+            .float()
+            .to(mvp.device)
         ) / 255.0
 
         # smplx landmarks
@@ -747,7 +783,9 @@ class DLMesh(nn.Module):
 
         sequence_index = random.randint(0, pose_seq.shape[0] - seq_length * sample_rate)
 
-        pose_index = torch.arange(sequence_index, sequence_index + seq_length * sample_rate, sample_rate)
+        pose_index = torch.arange(
+            sequence_index, sequence_index + seq_length * sample_rate, sample_rate
+        )
 
         # get the scale/center of canonical pose
         output_temp = self.body_model(
@@ -760,7 +798,9 @@ class DLMesh(nn.Module):
         v_cano_temp = output_temp.v_posed[0]
 
         # re-mesh
-        v_cano_dense_temp = subdivide_inorder(v_cano_temp, self.smplx_faces[self.remesh_mask], self.uniques[0])
+        v_cano_dense_temp = subdivide_inorder(
+            v_cano_temp, self.smplx_faces[self.remesh_mask], self.uniques[0]
+        )
 
         for unique, faces in zip(self.uniques[1:], self.faces_list[:-1]):
             v_cano_dense_temp = subdivide_inorder(v_cano_dense_temp, faces, unique)
@@ -794,7 +834,9 @@ class DLMesh(nn.Module):
             landmarks = output.joints[0, -68:, :]
 
             # re-mesh
-            v_cano_dense = subdivide_inorder(v_cano, self.smplx_faces[self.remesh_mask], self.uniques[0])
+            v_cano_dense = subdivide_inorder(
+                v_cano, self.smplx_faces[self.remesh_mask], self.uniques[0]
+            )
 
             for unique, faces in zip(self.uniques[1:], self.faces_list[:-1]):
                 v_cano_dense = subdivide_inorder(v_cano_dense, faces, unique)
@@ -807,9 +849,9 @@ class DLMesh(nn.Module):
                 else:
                     v_cano_dense += self.get_vertex_offset(is_train)
             # LBS
-            v_posed_dense = warp_points(v_cano_dense, self.dense_lbs_weights, output.joints_transform[:, :55]).squeeze(
-                0
-            )
+            v_posed_dense = warp_points(
+                v_cano_dense, self.dense_lbs_weights, output.joints_transform[:, :55]
+            ).squeeze(0)
 
             v_posed_dense = (v_posed_dense - center) * scale
 
@@ -820,7 +862,9 @@ class DLMesh(nn.Module):
             joints = (output.joints[0] - center) * scale
             landmarks = (landmarks - center) * scale
 
-            mesh = Mesh(v_posed_dense, self.faces_list[-1].int(), vt=self.vt, ft=self.ft)
+            mesh = Mesh(
+                v_posed_dense, self.faces_list[-1].int(), vt=self.vt, ft=self.ft
+            )
             mesh.auto_normal()
 
             if not self.opt.lock_tex and not self.opt.tex_mlp:
@@ -829,11 +873,15 @@ class DLMesh(nn.Module):
             mesh_sequences.append(mesh)
             vertex_sequences.append(v_posed_dense)
             landmark_sequences.append(landmarks)
-            align_face_sequences.append(scale * (output.joints[0, 55, :][None, :] - center))
+            align_face_sequences.append(
+                scale * (output.joints[0, 55, :][None, :] - center)
+            )
 
             keypoints = joints[
                 ...,
-                smpl_to_openpose("smplx", openpose_format="coco18", use_face_contour=True),
+                smpl_to_openpose(
+                    "smplx", openpose_format="coco18", use_face_contour=True
+                ),
                 :,
             ]
 
@@ -865,11 +913,15 @@ class DLMesh(nn.Module):
         bg_color = torch.ones(batch, h, w, 3).to(mvp.device)
 
         if light_d is None:
-            light_d = rays_o[0] + torch.randn(3, device=rays_o.device, dtype=torch.float)
+            light_d = rays_o[0] + torch.randn(
+                3, device=rays_o.device, dtype=torch.float
+            )
             light_d = safe_normalize(light_d)
 
         # render
-        pr_mesh, smplx_landmarks, cano_skeleton, v_posed = self.get_mesh(is_train=is_train)
+        pr_mesh, smplx_landmarks, cano_skeleton, v_posed = self.get_mesh(
+            is_train=is_train
+        )
 
         retarget_pose = self.retarget_pose
 
@@ -904,7 +956,9 @@ class DLMesh(nn.Module):
 
         dense_face = pr_mesh.f.long()
 
-        mask = torch.isin(torch.arange(25193), torch.from_numpy(self.smplx_face_vertix_idx))
+        mask = torch.isin(
+            torch.arange(25193), torch.from_numpy(self.smplx_face_vertix_idx)
+        ).cuda()
 
         mask = mask[dense_face].all(axis=1).cuda()
 
@@ -914,14 +968,18 @@ class DLMesh(nn.Module):
             torch.where(mask)[0],
         )  # b h w 1
 
-        for seq_idx, (cur_mesh, smplx_skeleton) in enumerate(zip(mesh_sequences, keypoints_sequences)):
+        for seq_idx, (cur_mesh, smplx_skeleton) in enumerate(
+            zip(mesh_sequences, keypoints_sequences)
+        ):
 
             smplx_skeleton_copy = smplx_skeleton[:18]
 
             # skeleton map as condition
             smplx_skeleton = smplx_skeleton.reshape(-1, 3)
             skeleton = torch.bmm(
-                F.pad(smplx_skeleton, pad=(0, 1), mode="constant", value=1.0).unsqueeze(0),
+                F.pad(smplx_skeleton, pad=(0, 1), mode="constant", value=1.0).unsqueeze(
+                    0
+                ),
                 torch.transpose(mvp, 1, 2),
             ).float()  # [B, N, 4]
             skeleton = skeleton[..., :2] / skeleton[..., 2:3]
@@ -959,7 +1017,13 @@ class DLMesh(nn.Module):
 
                 closet_in_verts = torch.sum((cur_mesh.v - x) ** 2, dim=1)
 
-                idx = closet_in_verts.topk(topk, largest=False).indices.detach().cpu().numpy().tolist()
+                idx = (
+                    closet_in_verts.topk(topk, largest=False)
+                    .indices.detach()
+                    .cpu()
+                    .numpy()
+                    .tolist()
+                )
 
                 if not any([x in set(visible_verts_idx) for x in set(idx)]):
                     skeleton[:, cur_joint] = None
@@ -970,7 +1034,11 @@ class DLMesh(nn.Module):
             )
 
             skeleton_condition = (
-                torch.from_numpy(skeleton_condition).permute(2, 0, 1).unsqueeze(0).float().to(mvp.device)
+                torch.from_numpy(skeleton_condition)
+                .permute(2, 0, 1)
+                .unsqueeze(0)
+                .float()
+                .to(mvp.device)
             ) / 255.0
             skeleton_condition_sequences.append(skeleton_condition)
 
