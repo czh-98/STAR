@@ -107,11 +107,6 @@ class Trainer(object):
                 p.requires_grad = False
             self.prepare_text_embeddings()
 
-        # try out torch 2.0
-        if torch.__version__[0] == "2":
-            self.model = torch.compile(self.model)
-            self.guidance_t2i = torch.compile(self.guidance_t2i)
-
         if isinstance(criterion, nn.Module):
             criterion.to(self.device)
         self.criterion = criterion
