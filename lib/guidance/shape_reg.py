@@ -127,15 +127,23 @@ sorter = np.argsort(EMBEDDING_INDICES)
 UPPER_OUTTER_LIP_LINE = [185, 40, 39, 37, 0, 267, 269, 270, 409]
 LOWER_OUTTER_LIP_LINE = [146, 91, 181, 84, 17, 314, 405, 321, 375]
 
-UPPER_OUTTER_LIP_LINE_EM = sorter[np.searchsorted(EMBEDDING_INDICES, UPPER_OUTTER_LIP_LINE, sorter=sorter)]
-LOWER_OUTTER_LIP_LINE_EM = sorter[np.searchsorted(EMBEDDING_INDICES, LOWER_OUTTER_LIP_LINE, sorter=sorter)]
+UPPER_OUTTER_LIP_LINE_EM = sorter[
+    np.searchsorted(EMBEDDING_INDICES, UPPER_OUTTER_LIP_LINE, sorter=sorter)
+]
+LOWER_OUTTER_LIP_LINE_EM = sorter[
+    np.searchsorted(EMBEDDING_INDICES, LOWER_OUTTER_LIP_LINE, sorter=sorter)
+]
 
 # from right to left, the upper and lower are in correspondence
 UPPER_INNER_LIP_LINE = [191, 80, 81, 82, 13, 312, 311, 310, 415]
 LOWER_INNER_LIP_LINE = [95, 88, 178, 87, 14, 317, 402, 318, 324]
 
-LOWER_INNER_LIP_LINE_EM = sorter[np.searchsorted(EMBEDDING_INDICES, LOWER_INNER_LIP_LINE, sorter=sorter)]
-UPPER_INNER_LIP_LINE_EM = sorter[np.searchsorted(EMBEDDING_INDICES, UPPER_INNER_LIP_LINE, sorter=sorter)]
+LOWER_INNER_LIP_LINE_EM = sorter[
+    np.searchsorted(EMBEDDING_INDICES, LOWER_INNER_LIP_LINE, sorter=sorter)
+]
+UPPER_INNER_LIP_LINE_EM = sorter[
+    np.searchsorted(EMBEDDING_INDICES, UPPER_INNER_LIP_LINE, sorter=sorter)
+]
 
 
 @lru_cache(maxsize=None)
@@ -160,8 +168,10 @@ def laplacian_smooth(
 
     loss = loss.norm(dim=1)
 
-    loss[get_flame_vertex_idx()] *= 5
-    loss = loss.sum() / b
+    # loss[get_flame_vertex_idx()] *= 5
+    # loss = loss.sum() / b
+
+    loss = (loss.sum() + loss[get_flame_vertex_idx()].sum() * 4) / b
 
     return loss
 
@@ -171,25 +181,25 @@ def skeleton_ranking_loss(canno_skeleton=None):
     canno_skeleton = canno_skeleton[:18].unsqueeze(0)  # 1 128 3
 
     # the leg length should not less than the arm length
-    rarm_length = torch.norm(canno_skeleton[:, 3] - canno_skeleton[:, 2], dim=-1) + torch.norm(
-        canno_skeleton[:, 3] - canno_skeleton[:, 4], dim=-1
-    )
+    rarm_length = torch.norm(
+        canno_skeleton[:, 3] - canno_skeleton[:, 2], dim=-1
+    ) + torch.norm(canno_skeleton[:, 3] - canno_skeleton[:, 4], dim=-1)
 
-    rleg_length = torch.norm(canno_skeleton[:, 9] - canno_skeleton[:, 8], dim=-1) + torch.norm(
-        canno_skeleton[:, 9] - canno_skeleton[:, 10], dim=-1
-    )
+    rleg_length = torch.norm(
+        canno_skeleton[:, 9] - canno_skeleton[:, 8], dim=-1
+    ) + torch.norm(canno_skeleton[:, 9] - canno_skeleton[:, 10], dim=-1)
 
-    larm_length = torch.norm(canno_skeleton[:, 6] - canno_skeleton[:, 5], dim=-1) + torch.norm(
-        canno_skeleton[:, 6] - canno_skeleton[:, 7], dim=-1
-    )
+    larm_length = torch.norm(
+        canno_skeleton[:, 6] - canno_skeleton[:, 5], dim=-1
+    ) + torch.norm(canno_skeleton[:, 6] - canno_skeleton[:, 7], dim=-1)
 
-    lleg_length = torch.norm(canno_skeleton[:, 12] - canno_skeleton[:, 11], dim=-1) + torch.norm(
-        canno_skeleton[:, 12] - canno_skeleton[:, 13], dim=-1
-    )
+    lleg_length = torch.norm(
+        canno_skeleton[:, 12] - canno_skeleton[:, 11], dim=-1
+    ) + torch.norm(canno_skeleton[:, 12] - canno_skeleton[:, 13], dim=-1)
 
-    loss = torch.max(torch.zeros_like(rarm_length), rarm_length - rleg_length) + torch.max(
-        torch.zeros_like(larm_length), larm_length - lleg_length
-    )
+    loss = torch.max(
+        torch.zeros_like(rarm_length), rarm_length - rleg_length
+    ) + torch.max(torch.zeros_like(larm_length), larm_length - lleg_length)
 
     loss = loss.sum()
 
@@ -218,8 +228,12 @@ def get_lip_index():
 
     lmk_bary_coords_mediapipe = lmk_embeddings_mediapipe["lmk_b_coords"]
 
-    lmk_faces_idx_mediapipe = torch.from_numpy(lmk_faces_idx_mediapipe).cuda().unsqueeze(0)  # 1 105 3
-    lmk_bary_coords_mediapipe = torch.from_numpy(lmk_bary_coords_mediapipe).cuda().unsqueeze(0).float()  # 1 105 3
+    lmk_faces_idx_mediapipe = (
+        torch.from_numpy(lmk_faces_idx_mediapipe).cuda().unsqueeze(0)
+    )  # 1 105 3
+    lmk_bary_coords_mediapipe = (
+        torch.from_numpy(lmk_bary_coords_mediapipe).cuda().unsqueeze(0).float()
+    )  # 1 105 3
 
     return face_idx, head_tri, lmk_faces_idx_mediapipe, lmk_bary_coords_mediapipe
 
@@ -228,9 +242,14 @@ def vertices2landmarks(vertices, faces, lmk_faces_idx, lmk_bary_coords):
     batch_size, num_verts = vertices.shape[:2]
     device = vertices.device
 
-    lmk_faces = torch.index_select(faces, 0, lmk_faces_idx.view(-1)).view(batch_size, -1, 3)
+    lmk_faces = torch.index_select(faces, 0, lmk_faces_idx.view(-1)).view(
+        batch_size, -1, 3
+    )
 
-    lmk_faces += torch.arange(batch_size, dtype=torch.long, device=device).view(-1, 1, 1) * num_verts
+    lmk_faces += (
+        torch.arange(batch_size, dtype=torch.long, device=device).view(-1, 1, 1)
+        * num_verts
+    )
 
     lmk_vertices = vertices.view(-1, 3)[lmk_faces].view(batch_size, -1, 3, 3)
 
@@ -245,10 +264,14 @@ def lip_distance_loss(dense_mesh_vertices, dense_face=None):
 
     # lip_landmark = None
 
-    face_idx, face_tri, lmk_faces_idx_mediapipe, lmk_bary_coords_mediapipe = get_lip_index()
+    face_idx, face_tri, lmk_faces_idx_mediapipe, lmk_bary_coords_mediapipe = (
+        get_lip_index()
+    )
 
     vertices = dense_mesh_vertices[:, face_idx]
-    landmarks2d_mediapipe = vertices2landmarks(vertices, face_tri, lmk_faces_idx_mediapipe, lmk_bary_coords_mediapipe)
+    landmarks2d_mediapipe = vertices2landmarks(
+        vertices, face_tri, lmk_faces_idx_mediapipe, lmk_bary_coords_mediapipe
+    )
 
     upper_lip = landmarks2d_mediapipe[:, UPPER_OUTTER_LIP_LINE_EM]
 
@@ -259,7 +282,9 @@ def lip_distance_loss(dense_mesh_vertices, dense_face=None):
     lower_inner_lip = landmarks2d_mediapipe[:, LOWER_INNER_LIP_LINE_EM]
 
     # y-axis
-    delta = upper_lip[..., 1] - lower_lip[..., 1]  # the upper lip should be higher than the lower lip
+    delta = (
+        upper_lip[..., 1] - lower_lip[..., 1]
+    )  # the upper lip should be higher than the lower lip
 
     lip_dist = torch.norm(delta, dim=-1)
 
@@ -287,7 +312,9 @@ def lip_distance_loss(dense_mesh_vertices, dense_face=None):
     up_inner_lip_dist = torch.norm(up_delta_inner_lip, dim=-1)
 
     # peanalize the negative distance
-    distance3 = torch.where(up_delta_inner_lip < 0, up_inner_lip_dist, torch.zeros_like(up_delta_inner_lip))
+    distance3 = torch.where(
+        up_delta_inner_lip < 0, up_inner_lip_dist, torch.zeros_like(up_delta_inner_lip)
+    )
 
     loss += torch.sum(distance3)
 
@@ -361,21 +388,33 @@ def intersection_loss(dense_mesh_vertices):
 
     reyeball = dense_mesh_vertices[:, reyeball_idx]
 
-    leye_idx_min, leye_idx_max, leyeball_radius = get_eyeball_idxs_and_rad(leyeball_idx, leyeball)
+    leye_idx_min, leye_idx_max, leyeball_radius = get_eyeball_idxs_and_rad(
+        leyeball_idx, leyeball
+    )
 
-    leyeball_location = (dense_mesh_vertices[:, leye_idx_min] + dense_mesh_vertices[:, leye_idx_max]) / 2.0
+    leyeball_location = (
+        dense_mesh_vertices[:, leye_idx_min] + dense_mesh_vertices[:, leye_idx_max]
+    ) / 2.0
 
-    reye_idx_min, reye_idx_max, reyeball_radius = get_eyeball_idxs_and_rad(reyeball_idx, reyeball)
+    reye_idx_min, reye_idx_max, reyeball_radius = get_eyeball_idxs_and_rad(
+        reyeball_idx, reyeball
+    )
 
-    reyeball_location = (dense_mesh_vertices[:, reye_idx_min] + dense_mesh_vertices[:, reye_idx_max]) / 2.0
+    reyeball_location = (
+        dense_mesh_vertices[:, reye_idx_min] + dense_mesh_vertices[:, reye_idx_max]
+    ) / 2.0
 
     ldeltas = torch.norm(leyelid_verts - leyeball_location.unsqueeze(0), dim=-1)
 
-    ldistance = torch.where(ldeltas < leyeball_radius, ldeltas, torch.zeros_like(ldeltas))
+    ldistance = torch.where(
+        ldeltas < leyeball_radius, ldeltas, torch.zeros_like(ldeltas)
+    )
 
     rdeltas = torch.norm(reyelid_verts - reyeball_location.unsqueeze(0), dim=-1)
 
-    rdistance = torch.where(rdeltas < reyeball_radius, rdeltas, torch.zeros_like(rdeltas))
+    rdistance = torch.where(
+        rdeltas < reyeball_radius, rdeltas, torch.zeros_like(rdeltas)
+    )
 
     loss = loss + torch.sum(ldistance) + torch.sum(rdistance)
 
